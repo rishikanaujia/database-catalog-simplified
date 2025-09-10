@@ -89,7 +89,8 @@ class DataProfiler:
         
         result = self.db.execute_query(query)
         if result:
-            return dict(result[0])
+            # Convert to lowercase column names for consistency
+            return {k.lower(): v for k, v in result[0].items()}
         return {}
     
     def _profile_text_column(self, table_name: str, column_name: str, sample_clause: str) -> Dict:
@@ -105,7 +106,13 @@ class DataProfiler:
         
         result = self.db.execute_query(query)
         if result:
-            sample_values = [row[column_name.upper()] for row in result]
+            # Handle case where column name might be uppercase in result
+            sample_values = []
+            for row in result:
+                # Try both cases
+                value = row.get(column_name) or row.get(column_name.upper())
+                if value:
+                    sample_values.append(value)
             return {'sample_values': '; '.join(map(str, sample_values))}
         return {}
     
@@ -123,9 +130,10 @@ class DataProfiler:
         
         result = self.db.execute_query(query)
         if result:
+            row = result[0]
             return {
-                'min_value': str(result[0]['MIN_VALUE']) if result[0]['MIN_VALUE'] else None,
-                'max_value': str(result[0]['MAX_VALUE']) if result[0]['MAX_VALUE'] else None,
-                'distinct_count': result[0]['DISTINCT_COUNT']
+                'min_value': str(row.get('MIN_VALUE') or row.get('min_value')) if row.get('MIN_VALUE') or row.get('min_value') else None,
+                'max_value': str(row.get('MAX_VALUE') or row.get('max_value')) if row.get('MAX_VALUE') or row.get('max_value') else None,
+                'distinct_count': row.get('DISTINCT_COUNT') or row.get('distinct_count')
             }
         return {}

@@ -24,6 +24,8 @@ class SchemaDiscoverer:
         # Convert to DataFrame
         if tables_data:
             df = pd.DataFrame(tables_data)
+            # Convert column names to lowercase for consistency
+            df.columns = df.columns.str.lower()
             logger.info(f"Found {len(df)} tables")
             return df
         else:
@@ -56,6 +58,8 @@ class SchemaDiscoverer:
         columns_data = self.db.execute_query(query, params)
         
         df = pd.DataFrame(columns_data)
+        # Convert column names to lowercase for consistency
+        df.columns = df.columns.str.lower()
         logger.info(f"Collected metadata for {len(df)} columns")
         return df
     
