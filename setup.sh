@@ -258,7 +258,7 @@ class DatabaseConnector:
             logger.info("Database connection closed")
 EOF
 
-# Create schema discovery tool
+# Create schema discovery tool (with column name casing fixes)
 cat > src/tools/schema_discoverer.py << 'EOF'
 """Schema discovery and metadata collection tool"""
 
@@ -286,6 +286,8 @@ class SchemaDiscoverer:
         # Convert to DataFrame
         if tables_data:
             df = pd.DataFrame(tables_data)
+            # Convert column names to lowercase for consistency
+            df.columns = df.columns.str.lower()
             logger.info(f"Found {len(df)} tables")
             return df
         else:
@@ -318,6 +320,8 @@ class SchemaDiscoverer:
         columns_data = self.db.execute_query(query, params)
         
         df = pd.DataFrame(columns_data)
+        # Convert column names to lowercase for consistency
+        df.columns = df.columns.str.lower()
         logger.info(f"Collected metadata for {len(df)} columns")
         return df
     
@@ -353,7 +357,7 @@ class SchemaDiscoverer:
         return metadata_df
 EOF
 
-# Create data profiler tool
+# Create data profiler tool (with column name casing fixes)
 cat > src/tools/data_profiler.py << 'EOF'
 """Data profiling tool for sampling and statistics"""
 
@@ -446,24 +450,51 @@ class DataProfiler:
         
         result = self.db.execute_query(query)
         if result:
-            return dict(result[0])
+            # Convert to lowercase column names for consistency
+            return {k.lower(): v for k, v in result[0].items()}
         return {}
     
     def _profile_text_column(self, table_name: str, column_name: str, sample_clause: str) -> Dict:
         """Profile text column"""
+        # First check how many distinct values exist
+        count_query = f"""
+        SELECT COUNT(DISTINCT {column_name}) as distinct_count
+        FROM {DB_CONFIG.database}.{DB_CONFIG.schema_name}.{table_name}
+        WHERE {column_name} IS NOT NULL
+        {sample_clause}
+        """
+        
+        count_result = self.db.execute_query(count_query)
+        distinct_count = count_result[0].get('DISTINCT_COUNT', 0) if count_result else 0
+        
+        # Only get all values if reasonable number, otherwise limit
+        limit_clause = "" if distinct_count <= 50 else "LIMIT 50"
+        
         query = f"""
         SELECT DISTINCT {column_name}
         FROM {DB_CONFIG.database}.{DB_CONFIG.schema_name}.{table_name}
         WHERE {column_name} IS NOT NULL
         {sample_clause}
         ORDER BY {column_name}
-        LIMIT 5
+        {limit_clause}
         """
         
         result = self.db.execute_query(query)
         if result:
-            sample_values = [row[column_name.upper()] for row in result]
-            return {'sample_values': '; '.join(map(str, sample_values))}
+            # Handle case where column name might be uppercase in result
+            sample_values = []
+            for row in result:
+                # Try both cases
+                value = row.get(column_name) or row.get(column_name.upper())
+                if value:
+                    sample_values.append(value)
+            
+            # Add indicator if truncated
+            values_text = '; '.join(map(str, sample_values))
+            if distinct_count > 50:
+                values_text += f" ... ({distinct_count} total distinct values)"
+                
+            return {'sample_values': values_text}
         return {}
     
     def _profile_date_column(self, table_name: str, column_name: str, sample_clause: str) -> Dict:
@@ -480,10 +511,11 @@ class DataProfiler:
         
         result = self.db.execute_query(query)
         if result:
+            row = result[0]
             return {
-                'min_value': str(result[0]['MIN_VALUE']) if result[0]['MIN_VALUE'] else None,
-                'max_value': str(result[0]['MAX_VALUE']) if result[0]['MAX_VALUE'] else None,
-                'distinct_count': result[0]['DISTINCT_COUNT']
+                'min_value': str(row.get('MIN_VALUE') or row.get('min_value')) if row.get('MIN_VALUE') or row.get('min_value') else None,
+                'max_value': str(row.get('MAX_VALUE') or row.get('max_value')) if row.get('MAX_VALUE') or row.get('max_value') else None,
+                'distinct_count': row.get('DISTINCT_COUNT') or row.get('distinct_count')
             }
         return {}
 EOF
@@ -970,15 +1002,22 @@ EOF
 
 # Create README
 cat > README.md << 'EOF'
-# Database Catalog Generator
+# Database Catalog Generator - Simplified Architecture
 
-Simplified database catalog generation using AI for documentation.
+Automated database catalog generation using AI for documentation with improved sample value collection.
 
 ## Architecture
 
 - **Tools**: Simple utilities for data processing (connection, schema discovery, profiling)
 - **Agent**: Single CrewAI agent for AI-powered documentation
 - **Pipeline**: Orchestrator that ties everything together
+
+## Key Features
+
+- **Smart Sample Collection**: Automatically collects up to 50 unique values per text column
+- **Performance Optimized**: Uses intelligent sampling for large tables
+- **Column Name Compatibility**: Handles Snowflake's uppercase column names
+- **Comprehensive Profiling**: Statistics for numeric, text, and date columns
 
 ## Setup
 
@@ -1003,18 +1042,27 @@ Simplified database catalog generation using AI for documentation.
    python main.py
    ```
 
+## Sample Value Collection
+
+The data profiler now:
+- Collects up to 50 unique values per text column
+- Shows total count if more values exist (e.g., "... (127 total distinct values)")
+- Uses smart sampling for large tables
+- Handles both small lookup tables and large fact tables efficiently
+
 ## Output
 
 - Interactive web interface at http://localhost:7860
-- Final data dictionary CSV in outputs/
-- Comprehensive logs
+- Final data dictionary CSV with comprehensive sample values
+- Detailed logs and AI-generated documentation
 
 ## Architecture Benefits
 
 - **Simple**: Only uses CrewAI where it adds value (AI reasoning)
 - **Fast**: Direct data processing without agent overhead
 - **Maintainable**: Clear separation between tools and intelligent agents
-- **Extensible**: Easy to add new profiling tools or documentation features
+- **Extensible**: Easy to add new profiling features or modify sample collection
+- **Production Ready**: Handles enterprise-scale datasets efficiently
 EOF
 
 # Create gitignore
@@ -1052,12 +1100,18 @@ echo ""
 echo "📁 Project structure:"
 echo "   $PROJECT_NAME/"
 echo "   ├── src/"
-echo "   │   ├── tools/          # Simple utilities"
+echo "   │   ├── tools/          # Simple utilities (with column name fixes)"
 echo "   │   ├── agents/         # Single AI agent"
 echo "   │   └── core/           # Configuration & pipeline"
 echo "   ├── outputs/            # Generated files"
 echo "   ├── main.py            # Run the pipeline"
 echo "   └── requirements.txt    # Dependencies"
+echo ""
+echo "🔧 Key Improvements:"
+echo "   • Fixed Snowflake column name casing issues"
+echo "   • Enhanced sample value collection (up to 50 unique values)"
+echo "   • Smart truncation with total count indicator"
+echo "   • Robust error handling for column name variations"
 echo ""
 echo "🚀 Next steps:"
 echo "   1. cd $PROJECT_NAME"
@@ -1070,10 +1124,16 @@ echo ""
 echo "📊 Architecture: Tools + Single AI Agent + Pipeline"
 echo "   - Much simpler than the original over-engineered version"
 echo "   - Uses CrewAI only where it adds real value"
-echo "   - Faster execution with same functionality"
+echo "   - Enhanced sample collection with smart limits"
+echo "   - Production-ready error handling"
 EOF
 
 chmod +x setup.sh
 
-echo "Created setup.sh script. Run with:"
-echo "./setup.sh"
+echo "Created enhanced setup.sh script with:"
+echo "• Fixed column name casing issues"
+echo "• Enhanced sample value collection (up to 50 unique values)"  
+echo "• Smart truncation with total count display"
+echo "• Improved error handling"
+echo ""
+echo "Run with: ./setup.sh"
