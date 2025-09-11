@@ -1,32 +1,36 @@
 # config/data_processing.yaml
 # Data processing and sampling configuration
 
+# Add this new section
+table_selection:
+  # Set to 'all' to process all tables, or 'selected' to use specific list
+  mode: "selected"  # or "all"
+  
+  # List of specific tables to process (when mode is 'selected')
+  include_tables:
+    - "CATALOG_PAGE"
+  
+  # Optional: exclude specific tables (when mode is 'all')
+  exclude_tables:
+    - "LARGE_FACT_TABLE"
+    - "TEMP_TABLE"
+
 sampling:
-  # Default number of rows to sample for large tables
-  default_sample_size: 1000
+  # Disable all sampling to avoid TABLESAMPLE syntax issues
+  default_sample_size: 0
+  small_table_threshold: 999999999
+  medium_table_threshold: 999999999  
+  large_table_threshold: 999999999
   
-  # Table size thresholds for sampling strategy
-  small_table_threshold: 10000      # No sampling needed
-  medium_table_threshold: 100000    # Use percentage sampling
-  large_table_threshold: 1000000    # Use row-based sampling
-  
-  # Percentage sampling for medium tables
-  bernoulli_sample_percent: 10
-  
-  # For very large tables, use row sampling
+  # Disabled sampling settings (kept for reference)
+  # bernoulli_sample_percent: 10
   max_sample_rows: 5000
 
 profiling:
-  # Maximum distinct values to collect per text column
+  # These settings will still work without sampling
   max_distinct_values: 50
-  
-  # Batch size for processing columns
   batch_size: 10
-  
-  # Timeout for individual column profiling (seconds)
   column_timeout_seconds: 30
-  
-  # Query timeout for data profiling (seconds)
   query_timeout_seconds: 120
 
 text_analysis:

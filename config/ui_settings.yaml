@@ -68,10 +68,11 @@ interface:
   enable_json_export: false
   
 theme:
-  primary_color: "blue"        # Instead of "#2196F3"
-  secondary_color: "yellow"    # Instead of "#FFC107"
-  success_color: "green"       # Instead of "#4CAF50"
-  warning_color: "orange"      # Instead of "#FF9800"
+  primary_color: "blue"        # Valid Gradio color names
+  secondary_color: "yellow"    
+  neutral_color: "gray"        # ADDED: This was missing
+  success_color: "green"       
+  warning_color: "orange"      
   error_color: "red" 
   
   # Dark mode support

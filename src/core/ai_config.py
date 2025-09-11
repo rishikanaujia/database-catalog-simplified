@@ -1,5 +1,5 @@
 """AI configuration loader"""
-
+import os
 import yaml
 from pathlib import Path
 from typing import Dict, Any, List
@@ -185,6 +185,43 @@ Return only the descriptions, one per line, in the same order as the columns lis
     @property
     def audience(self) -> str:
         return self._config['customization']['audience']
+    
+    # Add after existing properties:
+
+    @property
+    def provider(self) -> str:
+        return self._config.get('models', {}).get('provider', 'anthropic')
+
+    @property
+    def openai_config(self) -> Dict[str, Any]:
+        return self._config.get('models', {}).get('openai', {})
+
+    @property
+    def gemini_config(self) -> Dict[str, Any]:
+        return self._config.get('models', {}).get('gemini', {})
+
+    @property
+    def azure_config(self) -> Dict[str, Any]:
+        return self._config.get('models', {}).get('azure', {})
+
+    def get_api_key_for_provider(self, provider: str = None) -> str:
+        """Get API key for specified provider"""
+        if provider is None:
+            provider = self.provider
+        
+        provider_configs = {
+            'anthropic': self._config.get('models', {}).get('anthropic', {}),
+            'openai': self._config.get('models', {}).get('openai', {}),
+            'gemini': self._config.get('models', {}).get('gemini', {}),
+            'azure': self._config.get('models', {}).get('azure', {})
+        }
+        
+        config = provider_configs.get(provider, {})
+        api_key_env = config.get('api_key_env')
+        
+        if api_key_env:
+            return os.getenv(api_key_env)
+        return None
     
     # Helper methods
     def get_model_for_task(self, task_complexity: str = "standard") -> str:

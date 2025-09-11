@@ -1,20 +1,127 @@
-"""AI-powered documentation generation agent - Updated with configuration"""
+"""AI-powered documentation generation agent - Multi-provider support"""
 
 import pandas as pd
 import time
-from typing import List, Dict, Any
+import os
+from typing import List, Dict, Any, Optional
 from crewai import Agent, Task, Crew
-import anthropic
 from src.core.config import APP_CONFIG, logger
-
-# NEW: Import the AI config
 from src.core.ai_config import AI_CONFIG
 
-class DocumentationAgent:
-    """CrewAI agent for generating business documentation"""
+class MultiProviderAIClient:
+    """Unified client for multiple AI providers"""
     
     def __init__(self):
-        self.anthropic_client = anthropic.Anthropic(api_key=APP_CONFIG.anthropic_api_key)
+        self.provider = AI_CONFIG.provider
+        self.client = self._initialize_client()
+        logger.info(f"Initialized AI client for provider: {self.provider}")
+    
+    def _initialize_client(self):
+        """Initialize the appropriate AI client based on provider"""
+        try:
+            if self.provider == "anthropic":
+                import anthropic
+                api_key = AI_CONFIG.get_api_key_for_provider("anthropic")
+                if not api_key:
+                    api_key = APP_CONFIG.anthropic_api_key  # Fallback to existing config
+                return anthropic.Anthropic(api_key=api_key)
+            
+            elif self.provider == "openai":
+                import openai
+                api_key = AI_CONFIG.get_api_key_for_provider("openai")
+                org_id = os.getenv(AI_CONFIG.openai_config.get('organization_env', ''))
+                client_kwargs = {"api_key": api_key}
+                if org_id:
+                    client_kwargs["organization"] = org_id
+                return openai.OpenAI(**client_kwargs)
+            
+            elif self.provider == "gemini":
+                import google.generativeai as genai
+                api_key = AI_CONFIG.get_api_key_for_provider("gemini")
+                genai.configure(api_key=api_key)
+                return genai
+            
+            elif self.provider == "azure":
+                import openai
+                api_key = AI_CONFIG.get_api_key_for_provider("azure")
+                endpoint = os.getenv(AI_CONFIG.azure_config.get('endpoint_env', ''))
+                api_version = AI_CONFIG.azure_config.get('api_version', '2024-02-15-preview')
+                return openai.AzureOpenAI(
+                    api_key=api_key,
+                    azure_endpoint=endpoint,
+                    api_version=api_version
+                )
+            
+            elif self.provider == "litellm":
+                import litellm
+                return litellm
+            
+            else:
+                # Fallback to Anthropic for unknown providers
+                logger.warning(f"Unknown provider '{self.provider}', falling back to Anthropic")
+                import anthropic
+                return anthropic.Anthropic(api_key=APP_CONFIG.anthropic_api_key)
+                
+        except ImportError as e:
+            logger.error(f"Failed to import required library for {self.provider}: {e}")
+            logger.info("Falling back to Anthropic client")
+            import anthropic
+            return anthropic.Anthropic(api_key=APP_CONFIG.anthropic_api_key)
+    
+    def generate_text(self, prompt: str, max_tokens: int = 1000, model: str = None) -> str:
+        """Generate text using the configured provider"""
+        if model is None:
+            model = AI_CONFIG.get_model_for_task()
+        
+        try:
+            if self.provider == "anthropic":
+                response = self.client.messages.create(
+                    model=model,
+                    max_tokens=max_tokens,
+                    messages=[{"role": "user", "content": prompt}]
+                )
+                return response.content[0].text
+            
+            elif self.provider in ["openai", "azure"]:
+                response = self.client.chat.completions.create(
+                    model=model,
+                    max_tokens=max_tokens,
+                    messages=[{"role": "user", "content": prompt}]
+                )
+                return response.choices[0].message.content
+            
+            elif self.provider == "gemini":
+                model_instance = self.client.GenerativeModel(model)
+                generation_config = {
+                    'max_output_tokens': max_tokens,
+                    'temperature': 0.7,
+                }
+                response = model_instance.generate_content(
+                    prompt,
+                    generation_config=generation_config
+                )
+                return response.text
+            
+            elif self.provider == "litellm":
+                response = self.client.completion(
+                    model=model,
+                    messages=[{"role": "user", "content": prompt}],
+                    max_tokens=max_tokens
+                )
+                return response.choices[0].message.content
+            
+            else:
+                raise ValueError(f"Unsupported provider: {self.provider}")
+                
+        except Exception as e:
+            logger.error(f"Error generating text with {self.provider}: {str(e)}")
+            raise
+
+class DocumentationAgent:
+    """CrewAI agent for generating business documentation - Multi-provider support"""
+    
+    def __init__(self):
+        self.ai_client = MultiProviderAIClient()
         self.agent = self._create_agent()
     
     def _create_agent(self) -> Agent:
@@ -29,7 +136,7 @@ class DocumentationAgent:
     
     def generate_documentation(self, enriched_df: pd.DataFrame) -> pd.DataFrame:
         """Generate business documentation for all database objects"""
-        logger.info(f"Generating documentation for {len(enriched_df)} columns using {AI_CONFIG.primary_model}")
+        logger.info(f"Generating documentation for {len(enriched_df)} columns using {AI_CONFIG.primary_model} ({AI_CONFIG.provider})")
         
         # Group by table for efficient processing
         documented_data = []
@@ -82,13 +189,13 @@ class DocumentationAgent:
             model = AI_CONFIG.get_model_for_task("standard")
             max_tokens = AI_CONFIG.get_effective_token_limit("table")
             
-            response = self._make_api_request(
+            response_text = self._make_api_request(
                 prompt=prompt,
                 model=model,
                 max_tokens=max_tokens
             )
             
-            description = response.content[0].text.strip()
+            description = response_text.strip()
             
             # Validate response using config criteria
             if AI_CONFIG.validate_description(description):
@@ -165,13 +272,13 @@ class DocumentationAgent:
             model = AI_CONFIG.get_model_for_task(complexity)
             max_tokens = AI_CONFIG.get_effective_token_limit("batch")
             
-            response = self._make_api_request(
+            response_text = self._make_api_request(
                 prompt=prompt,
                 model=model,
                 max_tokens=max_tokens
             )
             
-            descriptions = response.content[0].text.strip().split('\n')
+            descriptions = response_text.strip().split('\n')
             
             # Clean up descriptions
             cleaned_descriptions = []
@@ -191,24 +298,25 @@ class DocumentationAgent:
             logger.error(f"Failed to generate batch descriptions: {str(e)}")
             return [f"Data field: {row['column_name']}" for _, row in batch_df.iterrows()]
     
-    def _make_api_request(self, prompt: str, model: str = None, max_tokens: int = None) -> Any:
-        """Make API request with configurable retry logic"""
+    def _make_api_request(self, prompt: str, model: str = None, max_tokens: int = None) -> str:
+        """Make API request with configurable retry logic - UPDATED for multi-provider"""
         if model is None:
             model = AI_CONFIG.primary_model
         if max_tokens is None:
             max_tokens = AI_CONFIG.column_description_max_tokens
         
         last_exception = None
+        current_model = model
         
         for attempt in range(AI_CONFIG.max_retries):
             try:
-                # Use configured model and limits
-                response = self.anthropic_client.messages.create(
-                    model=model,
+                # Use the unified AI client
+                response_text = self.ai_client.generate_text(
+                    prompt=prompt,
                     max_tokens=max_tokens,
-                    messages=[{"role": "user", "content": prompt}]
+                    model=current_model
                 )
-                return response
+                return response_text
                 
             except Exception as e:
                 last_exception = e
@@ -216,9 +324,9 @@ class DocumentationAgent:
                 
                 if attempt < AI_CONFIG.max_retries - 1:
                     # Try fallback model on subsequent attempts
-                    if model == AI_CONFIG.primary_model and attempt > 0:
-                        model = AI_CONFIG.fallback_model
-                        logger.info(f"Switching to fallback model: {model}")
+                    if current_model == AI_CONFIG.primary_model and attempt > 0:
+                        current_model = AI_CONFIG.fallback_model
+                        logger.info(f"Switching to fallback model: {current_model}")
                     
                     # Wait before retry
                     time.sleep(AI_CONFIG.retry_delay_seconds)

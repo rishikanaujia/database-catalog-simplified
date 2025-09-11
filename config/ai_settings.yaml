@@ -2,18 +2,40 @@
 # AI model and prompt configuration for documentation generation
 
 models:
-  # Primary model for documentation generation
+  # Current provider
+  provider: "anthropic"
+  
+  # Model settings (flat structure to match code)
   primary_model: "claude-3-haiku-20240307"
-  
-  # Fallback model if primary fails
   fallback_model: "claude-3-sonnet-20240229"
+  auto_select_model: false
   
-  # Alternative models for different use cases
-  fast_model: "claude-3-haiku-20240307"      # For simple descriptions
-  detailed_model: "claude-3-sonnet-20240229" # For complex analysis
+  # Provider-specific configs for future use
+  anthropic:
+    primary_model: "claude-3-haiku-20240307"
+    fallback_model: "claude-3-sonnet-20240229"
+    api_key_env: "ANTHROPIC_API_KEY"
   
-  # Model selection strategy
-  auto_select_model: false  # If true, choose model based on complexity
+  openai:
+    primary_model: "gpt-4o-mini"
+    fallback_model: "gpt-3.5-turbo"
+    api_key_env: "OPENAI_API_KEY"
+
+
+# ... rest of existing config unchanged
+# models:
+#   # Primary model for documentation generation
+#   primary_model: "claude-3-haiku-20240307"
+  
+#   # Fallback model if primary fails
+#   fallback_model: "claude-3-sonnet-20240229"
+  
+#   # Alternative models for different use cases
+#   fast_model: "claude-3-haiku-20240307"      # For simple descriptions
+#   detailed_model: "claude-3-sonnet-20240229" # For complex analysis
+  
+#   # Model selection strategy
+#   auto_select_model: false  # If true, choose model based on complexity
 
 tokens:
   # Token limits for different content types
@@ -100,11 +122,11 @@ prompts:
 quality:
   # Response quality settings
   require_complete_descriptions: true
-  min_description_length: 20
-  max_description_length: 200
+  min_description_length: 10
+  max_description_length: 500
   
   # Content filtering
-  avoid_technical_terms: true
+  avoid_technical_terms: false
   include_usage_examples: false
   
   # Validation

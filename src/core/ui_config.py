@@ -74,11 +74,12 @@ class UIConfig:
                 'enable_json_export': False
             },
             'theme': {
-                'primary_color': '#2196F3',
-                'secondary_color': '#FFC107',
-                'success_color': '#4CAF50',
-                'warning_color': '#FF9800',
-                'error_color': '#F44336',
+                'primary_color': 'blue',
+                'secondary_color': 'yellow',
+                'neutral_color': 'gray',
+                'success_color': 'green',
+                'warning_color': 'orange',
+                'error_color': 'red',
                 'enable_dark_mode': False,
                 'dark_background': '#1a1a1a',
                 'dark_text': '#ffffff'
@@ -245,11 +246,11 @@ class UIConfig:
         return text[:max_length] + self.long_text_indicator
     
     def get_gradio_theme_config(self) -> Dict[str, Any]:
-        """Get Gradio theme configuration"""
+        """Get Gradio theme configuration - FIXED to use valid color names"""
         return {
-            'primary_hue': self.primary_color,
+            'primary_hue': self._config['theme']['primary_color'],
             'secondary_hue': self._config['theme']['secondary_color'],
-            'neutral_hue': '#f5f5f5'
+            'neutral_hue': self._config['theme'].get('neutral_color', 'gray')
         }
 
 # Global instance

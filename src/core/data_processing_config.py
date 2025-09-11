@@ -30,12 +30,12 @@ class DataProcessingConfig:
         """Fallback to hardcoded defaults"""
         return {
             'sampling': {
-                'default_sample_size': 1000,
-                'small_table_threshold': 10000,
+                'default_sample_size': 0,  
+                'small_table_threshold': 999999999,
                 'medium_table_threshold': 100000,
                 'large_table_threshold': 1000000,
                 'bernoulli_sample_percent': 10,
-                'max_sample_rows': 5000
+                'max_sample_rows': 5000 
             },
             'profiling': {
                 'max_distinct_values': 50,
@@ -145,6 +145,9 @@ class DataProcessingConfig:
     @property
     def enable_caching(self) -> bool:
         return self._config['performance']['enable_caching']
+    @property
+    def max_sample_rows(self) -> int:
+        return self._config['sampling']['max_sample_rows']
     
     def get_sampling_strategy(self, row_count: int) -> str:
         """Determine sampling strategy based on table size"""

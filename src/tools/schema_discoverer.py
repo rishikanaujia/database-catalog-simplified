@@ -13,9 +13,36 @@ class SchemaDiscoverer:
     
     def __init__(self, db_connector: DatabaseConnector):
         self.db = db_connector
+
+    def _filter_tables(self, tables_df: pd.DataFrame) -> pd.DataFrame:
+        """Filter tables based on configuration"""
+        from src.core.data_processing_config import DATA_PROCESSING_CONFIG
+        
+        # Get table selection config (with fallback)
+        table_config = DATA_PROCESSING_CONFIG._config.get('table_selection', {})
+        mode = table_config.get('mode', 'all')
+        
+        if mode == 'selected':
+            include_tables = table_config.get('include_tables', [])
+            if include_tables:
+                # Filter to only included tables
+                filtered_df = tables_df[tables_df['name'].isin(include_tables)]
+                logger.info(f"Filtered to {len(filtered_df)} selected tables: {include_tables}")
+                return filtered_df
+        
+        elif mode == 'all':
+            exclude_tables = table_config.get('exclude_tables', [])
+            if exclude_tables:
+                # Exclude specified tables
+                filtered_df = tables_df[~tables_df['name'].isin(exclude_tables)]
+                logger.info(f"Excluded {len(exclude_tables)} tables: {exclude_tables}")
+                return filtered_df
+        
+        # Return all tables if no filtering specified
+        return tables_df
     
     def discover_tables(self) -> pd.DataFrame:
-        """Discover all tables in the schema (unchanged)"""
+        """Discover tables in the schema with optional filtering"""
         logger.info(f"Discovering tables in {DB_CONFIG.database}.{DB_CONFIG.schema_name}")
         
         query = f"""
@@ -24,13 +51,15 @@ class SchemaDiscoverer:
         
         tables_data = self.db.execute_query(query)
         
-        # Convert to DataFrame
         if tables_data:
             df = pd.DataFrame(tables_data)
-            # Convert column names to lowercase for consistency
             df.columns = df.columns.str.lower()
-            logger.info(f"Found {len(df)} tables")
-            return df
+            logger.info(f"Found {len(df)} total tables")
+            
+            # Apply filtering
+            filtered_df = self._filter_tables(df)
+            logger.info(f"Processing {len(filtered_df)} tables after filtering")
+            return filtered_df
         else:
             return pd.DataFrame()
     
