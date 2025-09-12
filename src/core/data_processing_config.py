@@ -1,4 +1,4 @@
-"""Data processing configuration loader"""
+"""Data processing configuration loader - FIXED"""
 
 import yaml
 from pathlib import Path
@@ -145,9 +145,8 @@ class DataProcessingConfig:
     @property
     def enable_caching(self) -> bool:
         return self._config['performance']['enable_caching']
-    @property
-    def max_sample_rows(self) -> int:
-        return self._config['sampling']['max_sample_rows']
+    
+    # REMOVED DUPLICATE max_sample_rows property here
     
     def get_sampling_strategy(self, row_count: int) -> str:
         """Determine sampling strategy based on table size"""
