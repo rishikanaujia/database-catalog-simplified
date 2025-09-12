@@ -4,7 +4,7 @@
 # Add this new section
 table_selection:
   # Set to 'all' to process all tables, or 'selected' to use specific list
-  mode: "selected"  # or "all"
+  mode: "all"  # or "all"
   
   # List of specific tables to process (when mode is 'selected')
   include_tables:

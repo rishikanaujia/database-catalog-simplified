@@ -1,30 +1,13 @@
-"""UI configuration loader"""
+"""UI configuration loader - Refactored to use BaseConfig"""
 
-import yaml
-from pathlib import Path
 from typing import Dict, Any
+from src.core.base_config import BaseConfig
 
-class UIConfig:
-    """Loads and manages UI configuration"""
+class UIConfig(BaseConfig):
+    """Loads and manages UI configuration using BaseConfig"""
     
     def __init__(self, config_path: str = "config/ui_settings.yaml"):
-        self.config_path = Path(config_path)
-        self._config = self._load_config()
-    
-    def _load_config(self) -> Dict[str, Any]:
-        """Load configuration from YAML file with fallback to defaults"""
-        if not self.config_path.exists():
-            print(f"Warning: Config file {self.config_path} not found. Using default UI settings.")
-            return self._get_default_config()
-        
-        try:
-            with open(self.config_path, 'r') as f:
-                config = yaml.safe_load(f)
-                print(f"Loaded UI settings from {self.config_path}")
-                return config
-        except Exception as e:
-            print(f"Error loading UI config: {e}. Using defaults.")
-            return self._get_default_config()
+        super().__init__(config_path, "UI settings")
     
     def _get_default_config(self) -> Dict[str, Any]:
         """Fallback to hardcoded defaults"""
@@ -96,107 +79,107 @@ class UIConfig:
     # Server configuration properties
     @property
     def host(self) -> str:
-        return self._config['server']['host']
+        return self.get('server.host', '0.0.0.0')
     
     @property
     def port(self) -> int:
-        return self._config['server']['port']
+        return self.get('server.port', 7860)
     
     @property
     def share(self) -> bool:
-        return self._config['server']['share']
+        return self.get('server.share', False)
     
     @property
     def inbrowser(self) -> bool:
-        return self._config['server']['inbrowser']
+        return self.get('server.inbrowser', True)
     
     @property
     def max_threads(self) -> int:
-        return self._config['server']['max_threads']
+        return self.get('server.max_threads', 40)
     
     @property
     def show_error(self) -> bool:
-        return self._config['server']['show_error']
+        return self.get('server.show_error', True)
     
     @property
     def show_api(self) -> bool:
-        return self._config['server']['show_api']
+        return self.get('server.show_api', True)
     
     # Display configuration properties
     @property
     def results_per_page(self) -> int:
-        return self._config['display']['results_per_page']
+        return self.get('display.results_per_page', 50)
     
     @property
     def max_search_results(self) -> int:
-        return self._config['display']['max_search_results']
+        return self.get('display.max_search_results', 200)
     
     @property
     def description_truncate_length(self) -> int:
-        return self._config['display']['description_truncate_length']
+        return self.get('display.description_truncate_length', 100)
     
     @property
     def sample_values_truncate_length(self) -> int:
-        return self._config['display']['sample_values_truncate_length']
+        return self.get('display.sample_values_truncate_length', 150)
     
     @property
     def long_text_indicator(self) -> str:
-        return self._config['display']['long_text_indicator']
+        return self.get('display.long_text_indicator', '...')
     
     @property
     def max_columns_in_context(self) -> int:
-        return self._config['display']['max_columns_in_context']
+        return self.get('display.max_columns_in_context', 10)
     
     # Styling properties
     @property
     def table_border(self) -> str:
-        return self._config['styling']['table_border']
+        return self.get('styling.table_border', '1px solid #ddd')
     
     @property
     def cell_padding(self) -> str:
-        return self._config['styling']['cell_padding']
+        return self.get('styling.cell_padding', '8px')
     
     @property
     def header_background(self) -> str:
-        return self._config['styling']['header_background']
+        return self.get('styling.header_background', '#f2f2f2')
     
     @property
     def header_text_color(self) -> str:
-        return self._config['styling']['header_text_color']
+        return self.get('styling.header_text_color', '#333')
     
     @property
     def font_family(self) -> str:
-        return self._config['styling']['font_family']
+        return self.get('styling.font_family', 'Arial, sans-serif')
     
     @property
     def font_size(self) -> str:
-        return self._config['styling']['font_size']
+        return self.get('styling.font_size', '14px')
     
     # Interface properties
     @property
     def search_placeholder(self) -> str:
-        return self._config['interface']['search_placeholder']
+        return self.get('interface.search_placeholder', 'Search tables, columns, or descriptions...')
     
     @property
     def default_tab(self) -> str:
-        return self._config['interface']['default_tab']
+        return self.get('interface.default_tab', 'Search Catalog')
     
     @property
     def enable_csv_export(self) -> bool:
-        return self._config['interface']['enable_csv_export']
+        return self.get('interface.enable_csv_export', True)
     
     # Theme properties
     @property
     def primary_color(self) -> str:
-        return self._config['theme']['primary_color']
+        return self.get('theme.primary_color', 'blue')
     
     @property
     def success_color(self) -> str:
-        return self._config['theme']['success_color']
+        return self.get('theme.success_color', 'green')
     
     @property
     def enable_dark_mode(self) -> bool:
-        return self._config['theme']['enable_dark_mode']
+        return self.get('theme.enable_dark_mode', False)
     
     # Helper methods
     def get_table_style(self) -> str:
@@ -210,12 +193,13 @@ class UIConfig:
     
     def get_header_style(self) -> str:
         """Generate CSS style for table headers"""
+        header_font_weight = self.get('styling.header_font_weight', 'bold')
         return f"""
         border: {self.table_border}; 
         padding: {self.cell_padding}; 
         background-color: {self.header_background}; 
         color: {self.header_text_color}; 
-        font-weight: {self._config['styling']['header_font_weight']};
+        font-weight: {header_font_weight};
         """
     
     def get_cell_style(self, is_code: bool = False) -> str:
@@ -226,10 +210,14 @@ class UIConfig:
         """
         
         if is_code:
+            code_background = self.get('styling.code_background', '#f5f5f5')
+            code_border = self.get('styling.code_border', '1px solid #ccc')
+            code_padding = self.get('styling.code_padding', '2px 4px')
+            
             base_style += f"""
-            background-color: {self._config['styling']['code_background']}; 
-            border: {self._config['styling']['code_border']}; 
-            padding: {self._config['styling']['code_padding']};
+            background-color: {code_background}; 
+            border: {code_border}; 
+            padding: {code_padding};
             font-family: monospace;
             """
         
@@ -246,12 +234,36 @@ class UIConfig:
         return text[:max_length] + self.long_text_indicator
     
     def get_gradio_theme_config(self) -> Dict[str, Any]:
-        """Get Gradio theme configuration - FIXED to use valid color names"""
+        """Get Gradio theme configuration - Using BaseConfig dot notation"""
         return {
-            'primary_hue': self._config['theme']['primary_color'],
-            'secondary_hue': self._config['theme']['secondary_color'],
-            'neutral_hue': self._config['theme'].get('neutral_color', 'gray')
+            'primary_hue': self.get('theme.primary_color', 'blue'),
+            'secondary_hue': self.get('theme.secondary_color', 'yellow'),
+            'neutral_hue': self.get('theme.neutral_color', 'gray')
         }
+    
+    def validate(self) -> bool:
+        """Validate configuration values"""
+        try:
+            # Validate port range
+            if not (1024 <= self.port <= 65535):
+                return False
+            
+            # Validate numeric values
+            if self.results_per_page <= 0:
+                return False
+            if self.max_search_results <= 0:
+                return False
+            if self.max_threads <= 0:
+                return False
+            
+            # Validate theme colors
+            valid_colors = ['red', 'orange', 'yellow', 'green', 'blue', 'purple', 'pink', 'gray']
+            if self.primary_color not in valid_colors:
+                return False
+            
+            return True
+        except Exception:
+            return False
 
 # Global instance
 UI_CONFIG = UIConfig()

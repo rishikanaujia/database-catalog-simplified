@@ -8,8 +8,22 @@ from pathlib import Path
 from typing import Dict, List, Optional
 import pandas as pd
 
-# Add src to path
-sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
+# Add src to path - robust path handling for tests directory
+import sys
+import os
+
+# Get the project root directory (parent of tests directory)
+project_root = Path(__file__).parent.parent
+src_path = project_root / 'src'
+
+# Add both project root and src to Python path
+sys.path.insert(0, str(project_root))
+sys.path.insert(0, str(src_path))
+
+# Debug: Print paths to help troubleshoot
+print(f"🔧 Project root: {project_root}")
+print(f"🔧 Source path: {src_path}")
+print(f"🔧 Source path exists: {src_path.exists()}")
 
 # Import components
 from src.core.config import DB_CONFIG, APP_CONFIG, logger
