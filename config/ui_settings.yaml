@@ -1,0 +1,91 @@
+# config/ui_settings.yaml
+# User interface configuration for the data catalog
+
+server:
+  # Server connection settings
+  host: "0.0.0.0"
+  port: 7860
+  share: false           # Set to true to create public Gradio link
+  inbrowser: true        # Auto-open browser
+  
+  # Advanced server settings
+  max_threads: 40
+  show_error: true
+  show_api: true
+
+display:
+  # Search and browsing settings
+  results_per_page: 50
+  max_search_results: 200
+  
+  # Text truncation settings
+  description_truncate_length: 100
+  sample_values_truncate_length: 150
+  long_text_indicator: "..."
+  
+  # Table display settings
+  max_columns_in_context: 10
+  show_row_numbers: true
+  enable_sorting: true
+
+styling:
+  # Table styling
+  table_border: "1px solid #ddd"
+  cell_padding: "8px"
+  header_background: "#f2f2f2"
+  header_text_color: "#333"
+  
+  # Row styling
+  even_row_background: "#f9f9f9"
+  odd_row_background: "#ffffff"
+  hover_background: "#e6f3ff"
+  
+  # Text styling
+  font_family: "Arial, sans-serif"
+  font_size: "14px"
+  header_font_weight: "bold"
+  
+  # Code styling (for column names)
+  code_background: "#f5f5f5"
+  code_border: "1px solid #ccc"
+  code_padding: "2px 4px"
+
+interface:
+  # Tab configuration
+  default_tab: "Search Catalog"  # or "Browse Tables"
+  
+  # Search interface
+  search_placeholder: "Search tables, columns, or descriptions..."
+  enable_advanced_search: true
+  search_history_size: 10
+  
+  # Browse interface
+  show_table_stats: true
+  enable_column_filtering: true
+  
+  # Export options
+  enable_csv_export: true
+  enable_json_export: false
+  
+theme:
+  primary_color: "blue"        # Valid Gradio color names
+  secondary_color: "yellow"    
+  neutral_color: "gray"        # ADDED: This was missing
+  success_color: "green"       
+  warning_color: "orange"      
+  error_color: "red" 
+  
+  # Dark mode support
+  enable_dark_mode: false
+  dark_background: "#1a1a1a"
+  dark_text: "#ffffff"
+
+performance:
+  # UI performance settings
+  lazy_loading: true
+  pagination_enabled: true
+  debounce_search_ms: 300
+  
+  # Caching
+  cache_search_results: true
+  cache_duration_minutes: 30

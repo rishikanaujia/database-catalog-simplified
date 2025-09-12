@@ -1,4 +1,4 @@
-"""Configuration management for Database Catalog"""
+"""Core configuration management for Database Catalog"""
 
 import os
 import logging
@@ -11,7 +11,7 @@ from pydantic import BaseModel, field_validator
 load_dotenv()
 
 class DatabaseConfig(BaseModel):
-    """Database connection configuration"""
+    """Database connection configuration (unchanged)"""
     account: str = ""
     user: str = ""
     password: str = ""
@@ -60,22 +60,18 @@ class DatabaseConfig(BaseModel):
         return params
 
 class AppConfig(BaseModel):
-    """Application configuration"""
+    """Core application configuration - simplified"""
     log_level: str = "INFO"
-    sample_size: int = 1000
-    batch_size: int = 10
     output_dir: str = "./outputs"
     anthropic_api_key: Optional[str] = None
-    model_name: str = "claude-3-haiku-20240307"
+    timestamp_format: str = "%Y%m%d_%H%M%S"
+    csv_encoding: str = "utf-8"
 
     def __init__(self, **kwargs):
         super().__init__(
             log_level=kwargs.get('log_level', os.getenv("LOG_LEVEL", "INFO")),
-            sample_size=kwargs.get('sample_size', int(os.getenv("SAMPLE_SIZE", "1000"))),
-            batch_size=kwargs.get('batch_size', int(os.getenv("BATCH_SIZE", "10"))),
             output_dir=kwargs.get('output_dir', os.getenv("OUTPUT_DIR", "./outputs")),
             anthropic_api_key=kwargs.get('anthropic_api_key', os.getenv("ANTHROPIC_API_KEY")),
-            model_name=kwargs.get('model_name', os.getenv("MODEL_NAME", "claude-3-haiku-20240307"))
         )
         
         # Ensure output directory exists
@@ -83,7 +79,7 @@ class AppConfig(BaseModel):
 
     def get_timestamped_filename(self, base_name: str, extension: str = "csv") -> str:
         """Generate timestamped filename"""
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now().strftime(self.timestamp_format)
         return f"{base_name}_{timestamp}.{extension}"
 
     def get_output_path(self, filename: str) -> Path:

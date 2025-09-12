@@ -1,0 +1,49 @@
+# config/column_classification.yaml
+# Column classification rules for automatic data type detection
+
+primary_keys:
+  suffixes: ['_sk', '_id', '_key', '_pk']
+  requires_not_null: true
+
+foreign_keys:
+  suffixes: ['_sk', '_fk', '_ref_id', '_foreign_key']
+  requires_not_null: false
+
+measures:
+  amount_fields:
+    keywords: ['amount', 'price', 'cost', 'total', 'value', 'revenue', 'sales', 'fee', 'charge']
+    business_type: 'Currency'
+  
+  quantity_fields:
+    keywords: ['quantity', 'qty', 'count', 'num', 'units', 'volume', 'weight']
+    business_type: 'Quantity'
+
+dimensions:
+  description_fields:
+    keywords: ['name', 'desc', 'description', 'title', 'label', 'comment']
+    business_type: 'Description'
+  
+  status_fields:
+    keywords: ['status', 'state', 'flag', 'indicator', 'type', 'category']
+    business_type: 'Status'
+  
+  location_fields:
+    keywords: ['address', 'city', 'state', 'country', 'zip', 'postal', 'region']
+    business_type: 'Location'
+
+# Default business types for SQL data types
+default_business_types:
+  'DATE': 'Date'
+  'DATETIME': 'Date'
+  'TIMESTAMP': 'Date'
+  'TIME': 'Date'
+  'TEXT': 'Text'
+  'VARCHAR': 'Text'
+  'CHAR': 'Text'
+  'STRING': 'Text'
+  'NUMBER': 'Numeric'
+  'INTEGER': 'Numeric'
+  'BIGINT': 'Numeric'
+  'DECIMAL': 'Numeric'
+  'FLOAT': 'Numeric'
+  'BOOLEAN': 'Boolean'

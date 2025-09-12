@@ -1,0 +1,164 @@
+# config/ai_settings.yaml
+# AI model and prompt configuration for documentation generation
+
+models:
+  # Current provider
+  provider: "anthropic"
+  
+  # Model settings (flat structure to match code)
+  primary_model: "claude-3-haiku-20240307"
+  fallback_model: "claude-3-sonnet-20240229"
+  auto_select_model: false
+  
+  # Provider-specific configs for future use
+  anthropic:
+    primary_model: "claude-3-haiku-20240307"
+    fallback_model: "claude-3-sonnet-20240229"
+    api_key_env: "ANTHROPIC_API_KEY"
+  
+  openai:
+    primary_model: "gpt-4o-mini"
+    fallback_model: "gpt-3.5-turbo"
+    api_key_env: "OPENAI_API_KEY"
+
+
+# ... rest of existing config unchanged
+# models:
+#   # Primary model for documentation generation
+#   primary_model: "claude-3-haiku-20240307"
+  
+#   # Fallback model if primary fails
+#   fallback_model: "claude-3-sonnet-20240229"
+  
+#   # Alternative models for different use cases
+#   fast_model: "claude-3-haiku-20240307"      # For simple descriptions
+#   detailed_model: "claude-3-sonnet-20240229" # For complex analysis
+  
+#   # Model selection strategy
+#   auto_select_model: false  # If true, choose model based on complexity
+
+tokens:
+  # Token limits for different content types
+  table_description_max: 500
+  column_description_max: 1000
+  batch_description_max: 1500
+  
+  # Context limits
+  max_context_columns: 10
+  max_sample_values_length: 100
+  
+  # Buffer for system messages
+  system_message_buffer: 100
+
+performance:
+  # Processing settings
+  batch_size: 10
+  max_retries: 3
+  retry_delay_seconds: 2
+  
+  # Timeout settings
+  request_timeout_seconds: 60
+  
+  # Concurrent processing
+  enable_concurrent_requests: false
+  max_concurrent_requests: 3
+
+prompts:
+  # System message for the documentation agent
+  system_message: |
+    You are an expert at translating technical database schemas into 
+    business-friendly documentation. You understand both data architecture and 
+    business needs, creating descriptions that help users discover and understand data.
+    
+    Focus on:
+    - Clear, business-oriented language
+    - Practical usage examples
+    - Data relationships and context
+    - Avoiding technical jargon
+
+  # Template for table descriptions
+  table_description_template: |
+    Provide a clear business description for the database table '{table_name}'.
+    
+    Table has {column_count} columns including:
+    {column_info}
+    
+    Provide a 2-3 sentence business description explaining:
+    1. What this table contains
+    2. Its business purpose  
+    3. How it might be used
+    
+    Keep it business-focused and accessible to non-technical users.
+
+  # Template for column descriptions
+  column_description_template: |
+    Provide concise business descriptions for these database columns.
+    
+    Table context: {table_context}
+    
+    Columns:
+    {column_info}
+    
+    For each column, provide a 1-sentence business description explaining what it contains and how it's used.
+    Return only the descriptions, one per line, in the same order as the columns listed above.
+
+  # Alternative templates for different business domains
+  finance_table_template: |
+    Describe this financial data table '{table_name}' for business analysts.
+    
+    Columns ({column_count}): {column_info}
+    
+    Explain the business purpose, typical usage in financial reporting, 
+    and key relationships to other financial data.
+
+  retail_table_template: |
+    Describe this retail/e-commerce table '{table_name}' for business users.
+    
+    Columns ({column_count}): {column_info}
+    
+    Explain how this data supports retail operations, customer insights, 
+    or sales analysis.
+
+quality:
+  # Response quality settings
+  require_complete_descriptions: true
+  min_description_length: 10
+  max_description_length: 500
+  
+  # Content filtering
+  avoid_technical_terms: false
+  include_usage_examples: false
+  
+  # Validation
+  validate_responses: true
+  retry_on_short_responses: true
+
+customization:
+  # Business domain customization
+  business_domain: "general"  # general, finance, retail, healthcare, etc.
+  
+  # Language and tone
+  tone: "professional"        # professional, casual, technical
+  audience: "business_users"  # business_users, technical_users, executives
+  
+  # Regional customization
+  language: "en"
+  locale: "US"
+  
+  # Industry-specific terminology
+  use_industry_terms: false
+  industry_glossary_file: null
+
+experimental:
+  # Experimental features
+  enable_ai_classification_review: false
+  enable_relationship_detection: false
+  enable_data_quality_insights: false
+  
+  # Advanced prompting
+  use_chain_of_thought: false
+  use_few_shot_examples: false
+  
+  # Model comparison
+  enable_model_comparison: false
+  compare_models: ["claude-3-haiku-20240307", "claude-3-sonnet-20240229"]
