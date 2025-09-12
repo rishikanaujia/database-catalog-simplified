@@ -1,34 +1,22 @@
-"""Data processing configuration loader"""
+"""Data processing configuration loader - Refactored to use BaseConfig"""
 
-import yaml
-from pathlib import Path
 from typing import Dict, List, Any
+from src.core.base_config import BaseConfig
 
-class DataProcessingConfig:
-    """Loads and manages data processing configuration"""
+class DataProcessingConfig(BaseConfig):
+    """Loads and manages data processing configuration using BaseConfig"""
     
     def __init__(self, config_path: str = "config/data_processing.yaml"):
-        self.config_path = Path(config_path)
-        self._config = self._load_config()
-    
-    def _load_config(self) -> Dict[str, Any]:
-        """Load configuration from YAML file with fallback to defaults"""
-        if not self.config_path.exists():
-            print(f"Warning: Config file {self.config_path} not found. Using default processing settings.")
-            return self._get_default_config()
-        
-        try:
-            with open(self.config_path, 'r') as f:
-                config = yaml.safe_load(f)
-                print(f"Loaded data processing settings from {self.config_path}")
-                return config
-        except Exception as e:
-            print(f"Error loading data processing config: {e}. Using defaults.")
-            return self._get_default_config()
+        super().__init__(config_path, "data processing")
     
     def _get_default_config(self) -> Dict[str, Any]:
         """Fallback to hardcoded defaults"""
         return {
+            'table_selection': {
+                'mode': 'selected',
+                'include_tables': ['CATALOG_PAGE'],
+                'exclude_tables': ['LARGE_FACT_TABLE', 'TEMP_TABLE']
+            },
             'sampling': {
                 'default_sample_size': 0,  
                 'small_table_threshold': 999999999,
@@ -61,94 +49,105 @@ class DataProcessingConfig:
             }
         }
     
+    # Table selection properties
+    @property
+    def table_selection_mode(self) -> str:
+        return self.get('table_selection.mode', 'selected')
+    
+    @property
+    def include_tables(self) -> List[str]:
+        return self.get('table_selection.include_tables', ['CATALOG_PAGE'])
+    
+    @property
+    def exclude_tables(self) -> List[str]:
+        return self.get('table_selection.exclude_tables', [])
+    
     # Sampling configuration properties
     @property
     def default_sample_size(self) -> int:
-        return self._config['sampling']['default_sample_size']
+        return self.get('sampling.default_sample_size', 0)
     
     @property
     def small_table_threshold(self) -> int:
-        return self._config['sampling']['small_table_threshold']
+        return self.get('sampling.small_table_threshold', 999999999)
     
     @property
     def medium_table_threshold(self) -> int:
-        return self._config['sampling']['medium_table_threshold']
+        return self.get('sampling.medium_table_threshold', 100000)
     
     @property
     def large_table_threshold(self) -> int:
-        return self._config['sampling']['large_table_threshold']
+        return self.get('sampling.large_table_threshold', 1000000)
     
     @property
     def bernoulli_sample_percent(self) -> int:
-        return self._config['sampling']['bernoulli_sample_percent']
+        return self.get('sampling.bernoulli_sample_percent', 10)
     
     @property
     def max_sample_rows(self) -> int:
-        return self._config['sampling']['max_sample_rows']
+        return self.get('sampling.max_sample_rows', 5000)
     
     # Profiling configuration properties
     @property
     def max_distinct_values(self) -> int:
-        return self._config['profiling']['max_distinct_values']
+        return self.get('profiling.max_distinct_values', 50)
     
     @property
     def batch_size(self) -> int:
-        return self._config['profiling']['batch_size']
+        return self.get('profiling.batch_size', 10)
     
     @property
     def column_timeout_seconds(self) -> int:
-        return self._config['profiling']['column_timeout_seconds']
+        return self.get('profiling.column_timeout_seconds', 30)
     
     @property
     def query_timeout_seconds(self) -> int:
-        return self._config['profiling']['query_timeout_seconds']
+        return self.get('profiling.query_timeout_seconds', 120)
     
     # Text analysis properties
     @property
     def max_sample_text_length(self) -> int:
-        return self._config['text_analysis']['max_sample_text_length']
+        return self.get('text_analysis.max_sample_text_length', 200)
     
     @property
     def max_individual_value_length(self) -> int:
-        return self._config['text_analysis']['max_individual_value_length']
+        return self.get('text_analysis.max_individual_value_length', 50)
     
     @property
     def truncation_indicator(self) -> str:
-        return self._config['text_analysis']['truncation_indicator']
+        return self.get('text_analysis.truncation_indicator', ' ... ')
     
     # Numeric analysis properties
     @property
     def decimal_places(self) -> int:
-        return self._config['numeric_analysis']['decimal_places']
+        return self.get('numeric_analysis.decimal_places', 2)
     
     @property
     def calculate_percentiles(self) -> bool:
-        return self._config['numeric_analysis']['calculate_percentiles']
+        return self.get('numeric_analysis.calculate_percentiles', False)
     
     @property
     def percentiles(self) -> List[int]:
-        return self._config['numeric_analysis']['percentiles']
+        return self.get('numeric_analysis.percentiles', [25, 50, 75, 90, 95])
     
     # Performance properties
     @property
     def enable_parallel_processing(self) -> bool:
-        return self._config['performance']['enable_parallel_processing']
+        return self.get('performance.enable_parallel_processing', False)
     
     @property
     def max_workers(self) -> int:
-        return self._config['performance']['max_workers']
+        return self.get('performance.max_workers', 4)
     
     @property
     def memory_limit_mb(self) -> int:
-        return self._config['performance']['memory_limit_mb']
+        return self.get('performance.memory_limit_mb', 1024)
     
     @property
     def enable_caching(self) -> bool:
-        return self._config['performance']['enable_caching']
-    @property
-    def max_sample_rows(self) -> int:
-        return self._config['sampling']['max_sample_rows']
+        return self.get('performance.enable_caching', True)
     
+    # Helper methods
     def get_sampling_strategy(self, row_count: int) -> str:
         """Determine sampling strategy based on table size"""
         if row_count <= self.small_table_threshold:
@@ -177,6 +176,26 @@ class DataProcessingConfig:
         if value is None:
             return "NULL"
         return f"{value:.{self.decimal_places}f}"
+    
+    def validate(self) -> bool:
+        """Validate configuration values"""
+        try:
+            # Validate table selection mode
+            valid_modes = ['all', 'selected']
+            if self.table_selection_mode not in valid_modes:
+                return False
+            
+            # Validate numeric values
+            if self.max_sample_rows <= 0:
+                return False
+            if self.batch_size <= 0:
+                return False
+            if self.decimal_places < 0:
+                return False
+            
+            return True
+        except Exception:
+            return False
 
 # Global instance
 DATA_PROCESSING_CONFIG = DataProcessingConfig()
